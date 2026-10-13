@@ -5,8 +5,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import time
-
-
+import konfiguracje
 
 
 def wyslij():
@@ -31,6 +30,7 @@ def wyslij():
         args=(tekst,),
         daemon=True
     ).start()
+
 
 def zapytaj_bielika(tekst):
 
@@ -62,7 +62,13 @@ def zapytaj_bielika(tekst):
         okno.after(
             0,
             lambda: pokaz_odpowiedz(
-                "BŁĄD: " + dane["error"]
+                "BŁĄD: " + dane["error"],
+                godzina,
+                czas,
+                model,
+                czy_z_pamięci_checkbox,
+                czy_szuka_z_bazy,
+                czy_szuka_online
             )
         )
         return
@@ -75,13 +81,36 @@ def zapytaj_bielika(tekst):
             tekst_bielika,
             godzina,
             czas,
-            model
+            model,
+            czy_z_pamięci_checkbox,
+            czy_szuka_z_bazy,
+            czy_szuka_online
         )
     )
 
-def pokaz_odpowiedz(tekst, godzina, czas, model):
+
+def pokaz_odpowiedz(
+    tekst,
+    godzina,
+    czas,
+    model,
+    czy_z_pamięci,
+    z_bazy,
+    czy_online
+):
 
     rozmowa.config(state="normal")
+
+    if dodatkowe_info_w_konwersacji.get():
+        rozmowa.insert(
+            tk.END,
+            f"godzina: {godzina} | "
+            f"czas: {czas:.2f} | "
+            f"model: {model} | "
+            f"pamięć: {czy_z_pamięci.get()} | "
+            f"baza: {z_bazy.get()} | "
+            f"online: {czy_online.get()}\n"
+        )
 
     rozmowa.insert(
         tk.END,
@@ -94,42 +123,182 @@ def pokaz_odpowiedz(tekst, godzina, czas, model):
     Czas.config(text=f"Czas: {czas:.2f} s")
     Model.config(text="Model: " + model)
 
-def nowa_rozmowa():
-    rozmowa.delete("1.0", tk.END)
+    if czy_szuka_online.get():
+        try:
+            requests.get(
+                "https://www." + konfiguracje.wyszukiwarka + ".com",
+                timeout=5
+            )
+            status_online.config(text="wyszukiwanie: online")
+        except:
+            status_online.config(text="wyszukiwanie: offline")
+    else:
+        status_online.config(text="wyszukiwanie: offline")
 
-# ===== OKON OPCJI PRAMU =====
+    if czy_z_pamięci == True:
+        status_online.config(text="wyszukiwanie: offline")
+    else:
+        status_online.config(text="wyszukiwanie: offline")
+
+
+# ===== OKNO OPCJI PROGRAMU =====
 
 def opcje_programu():
+
+    global dodatkowe_info_w_konwersacji
+
     okno_opcji = tk.Toplevel(okno)
     okno_opcji.title("Opcje programu")
     okno_opcji.geometry("400x300")
-    okno_opcji.configure(bg="black")
+    okno_opcji.configure(bg=konfiguracje.kolor_tla)
 
     napis = tk.Label(
         okno_opcji,
-        text="Tutaj będą opcje programu",
-        bg="black",
-        fg="white"
+        text="wybor preferowanej przeglądarki",
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle
     )
 
     napis.pack()
+
+    wybor = tk.StringVar(value=konfiguracje.wyszukiwarka)
+    ekran_powitalny = tk.BooleanVar(value=True)
+
+    wybor_wyszukiwarki = tk.OptionMenu(
+        okno_opcji,
+        wybor,
+        "google",
+        "Bing",
+        "Brave",
+        "DuckDuckGo",
+        "SearXNG"
+    )
+
+    wybor_wyszukiwarki.pack()
+
+    dodatkowe_info_pytanie = tk.Checkbutton(
+        okno_opcji,
+        text="zapis dodatkowych informacji przy rozmowie",
+        variable=dodatkowe_info_w_konwersacji,
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle,
+        selectcolor="black"
+    )
+
+    dodatkowe_info_pytanie.pack()
+
+    ekran_powitalny_pytanie = tk.Checkbutton(
+        okno_opcji,
+        text="ekran powitalny",
+        variable=ekran_powitalny,
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle,
+        selectcolor="black"
+    )
+
+    ekran_powitalny_pytanie.pack()
+
+    def zapisz_ustawienia_programu():
+
+        nowa_wyszukiwarka = wybor.get()
+        nowa_dodatkowe_info_w_konwersacji = dodatkowe_info_w_konwersacji.get()
+        nowy_ekran_powitalny = ekran_powitalny.get()
+
+        konfiguracje.wyszukiwarka = wybor.get()
+
+        sciezka = Path(__file__).parent / "konfiguracje.py"
+
+        with open(sciezka, "r", encoding="utf-8") as plik:
+            linie = plik.readlines()
+
+        for i, linia in enumerate(linie):
+            if linia.startswith("wyszukiwarka ="):
+                linie[i] = f'wyszukiwarka = "{nowa_wyszukiwarka}"\n'
+                break
+
+        for i, linia in enumerate(linie):
+            if linia.startswith("wypisywanie_dodatkowych_informacji ="):
+                linie[i] = f'wypisywanie_dodatkowych_informacji = {nowa_dodatkowe_info_w_konwersacji}\n'
+                break
+
+        for i, linia in enumerate(linie):
+            if linia.startswith("Ekran_powitalny ="):
+                linie[i] = f'Ekran_powitalny = {nowy_ekran_powitalny}\n'
+                break
+
+        with open(sciezka, "w", encoding="utf-8") as plik:
+            plik.writelines(linie)
+
+        okno_opcji.destroy()
+
+    tk.Button(
+        okno_opcji,
+        text="Zapisz ustawienia",
+        command=zapisz_ustawienia_programu
+    ).pack()
+
 
 # ===== GŁÓWNY EKRAN =====
 
 okno = tk.Tk()
 
+dodatkowe_info_w_konwersacji = tk.BooleanVar(value=True)
+
 okno.title("Bielik")
 okno.geometry("800x600")
-okno.configure(bg="black")
+okno.configure(bg=konfiguracje.kolor_tla)
 
 
 # ===== MENU GÓRA =====
 
 menu = tk.Menu(
     okno,
-    bg="black",
-    fg="white"
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle
 )
+
+
+# ===== KONFIGURACJE KONWERSACJI =====
+
+def nowa_rozmowa():
+
+    okno_opcji = tk.Toplevel(okno)
+    okno_opcji.title("Opcje programu")
+    okno_opcji.geometry("200x150")
+    okno_opcji.configure(bg=konfiguracje.kolor_tla)
+
+    napis = tk.Label(
+        okno_opcji,
+        text="Jak nazwać konwersacje?",
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle
+    )
+
+    napis.pack()
+
+    pole = tk.Entry(okno_opcji)
+    pole.pack()
+
+    def zapisz_nowy_plik():
+
+        wartosc = pole.get()
+
+        sciezka = (
+            Path(__file__).parent
+            / "Zapis_konwersacji"
+            / f"{wartosc}.txt"
+        )
+
+        sciezka.touch()
+
+        okno_opcji.destroy()
+
+    tk.Button(
+        okno_opcji,
+        text="Zapisz nazwę",
+        command=zapisz_nowy_plik
+    ).pack()
+
 
 game_menu = tk.Menu(
     menu,
@@ -137,17 +306,17 @@ game_menu = tk.Menu(
 )
 
 game_menu.add_command(
-    label="Zapisz konwersacje",
+    label="Nowa konwersacja",
     command=nowa_rozmowa
 )
 
 game_menu.add_command(
-    label="Zakończ sesję",
+    label="Nowa konwersacja bez zapisu",
     command=nowa_rozmowa
 )
 
 game_menu.add_command(
-    label="Wyjdź",
+    label="Zapisz i wyjdź",
     command=okno.destroy
 )
 
@@ -155,24 +324,27 @@ menu.add_cascade(
     label="Konwersacja",
     menu=game_menu
 )
+
+
 # ----------
+
 opcje_menu = tk.Menu(
     menu,
     tearoff=0
 )
 
 menu.add_cascade(
-    label="Opcje" ,
+    label="Opcje",
     menu=opcje_menu
 )
 
 opcje_menu.add_command(
-    label = "Opcje programu",
+    label="Opcje programu",
     command=opcje_programu
 )
 
 opcje_menu.add_command(
-    label = "Opcje wyglądu"
+    label="Opcje wyglądu"
 )
 
 okno.config(menu=menu)
@@ -180,16 +352,16 @@ okno.config(menu=menu)
 
 # ----------
 
-
 menu.add_command(
     label="Pomoc"
 )
 
-# ==== GŁÓWNY PANEL ==== 
+
+# ==== GŁÓWNY PANEL ====
 
 glowny_panel = tk.Frame(
     okno,
-    bg="black"
+    bg=konfiguracje.kolor_tla
 )
 
 glowny_panel.pack(
@@ -198,7 +370,7 @@ glowny_panel.pack(
 )
 
 
-# ==== UKŁAD 20% / 60% / 20% ==== 
+# ==== UKŁAD 20% / 60% / 20% ====
 
 glowny_panel.grid_columnconfigure(
     0,
@@ -229,11 +401,11 @@ glowny_panel.grid_rowconfigure(
 )
 
 
-# ==== LEWE MENU - 20% ==== 
+# ==== LEWE MENU - 20% ====
 
 lewe_menu = tk.Frame(
     glowny_panel,
-    bg="black"
+    bg=konfiguracje.kolor_tla
 )
 
 lewe_menu.grid(
@@ -244,8 +416,8 @@ lewe_menu.grid(
 
 lista = tk.Listbox(
     lewe_menu,
-    bg="black",
-    fg="white",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
     selectbackground="gray",
     selectforeground="white"
 )
@@ -255,17 +427,18 @@ lista.pack(
     expand=True
 )
 
-folder = Path("Zapis_konwersacji")
+folder = Path(__file__).parent / "Zapis_konwersacji"
 
 for plik in folder.iterdir():
     if plik.suffix == ".txt":
         lista.insert(tk.END, plik.stem)
 
-# ==== PANEL ROZMOWY - 60% ==== 
+
+# ==== PANEL ROZMOWY - 60% ====
 
 panel_rozmowy = tk.Frame(
     glowny_panel,
-    bg="black"
+    bg=konfiguracje.kolor_tla
 )
 
 panel_rozmowy.grid(
@@ -275,12 +448,11 @@ panel_rozmowy.grid(
 )
 
 
-
-# ==== PRAWE MENU - 20% ==== 
+# ==== PRAWE MENU - 20% ====
 
 prawe_menu = tk.Frame(
     glowny_panel,
-    bg="black"
+    bg=konfiguracje.kolor_tla
 )
 
 prawe_menu.grid(
@@ -289,44 +461,98 @@ prawe_menu.grid(
     sticky="nsew"
 )
 
-Godzina = tk.Label(prawe_menu,text="Godzina :",bg="black",fg="white")
-Godzina.pack()
-Czas = tk.Label(prawe_menu,text="Czas :",bg="black",fg="white")
-Czas.pack()
-Model = tk.Label(prawe_menu,text="Model :",bg="black",fg="white")
-Model.pack()
-czy_online = tk.Label(prawe_menu,text="Z Internetem :",bg="black",fg="white")
-czy_online.pack()
-czy_szuka_z_bazy = tk.Label(prawe_menu,text="Z bzay:",bg="black",fg="white")
-czy_szuka_z_bazy.pack()
 
-czy_z_pamięci = tk.BooleanVar(value=True)
+Godzina = tk.Label(
+    prawe_menu,
+    text="Godzina :",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle
+)
+Godzina.pack()
+
+Czas = tk.Label(
+    prawe_menu,
+    text="Czas :",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle
+)
+Czas.pack()
+
+Model = tk.Label(
+    prawe_menu,
+    text="Model :",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle
+)
+Model.pack()
+
+status_baza = tk.Label(
+    prawe_menu,
+    text="Z bazy:",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle
+)
+status_baza.pack()
+
+status_online = tk.Label(
+    prawe_menu,
+    text="wyszukiwanie: offline",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle
+)
+status_online.pack()
+
+
+czy_z_pamięci_checkbox = tk.BooleanVar(value=True)
 czy_szuka_online = tk.BooleanVar(value=True)
 czy_szuka_z_bazy = tk.BooleanVar(value=True)
 
-czy_z_pamięci = tk.Checkbutton(prawe_menu,text="czy z pamięci ogólnej",variable=czy_szuka_online,bg="black",fg="white",selectcolor="black"
+
+czy_z_pamięci = tk.Checkbutton(
+    prawe_menu,
+    text="czy z pamięci ogólnej",
+    variable=czy_z_pamięci_checkbox,
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
+    selectcolor="black"
 )
+
 czy_z_pamięci.pack(side="bottom")
 
-czy_online = tk.Checkbutton(prawe_menu,text="Wyszukiwanie Online",variable=czy_szuka_online,bg="black",fg="white",selectcolor="black"
+
+czy_online = tk.Checkbutton(
+    prawe_menu,
+    text="Wyszukiwanie Online",
+    variable=czy_szuka_online,
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
+    selectcolor="black"
 )
+
 czy_online.pack(side="bottom")
 
-z_bazy = tk.Checkbutton(prawe_menu,text="Korzystanie z bazy",variable=czy_szuka_z_bazy,bg="black",fg="white",selectcolor="black"
+
+z_bazy = tk.Checkbutton(
+    prawe_menu,
+    text="Korzystanie z bazy",
+    variable=czy_szuka_z_bazy,
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
+    selectcolor="black"
 )
+
 z_bazy.pack(side="bottom")
 
 
-# ==== POLE ROZMOWY ==== 
+# ==== POLE ROZMOWY ====
 
 rozmowa = tk.Text(
     panel_rozmowy,
-    bg="black",
-    fg="white",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
     state="disabled",
     insertbackground="white"
 )
-
 
 rozmowa.pack(
     fill="both",
@@ -334,11 +560,11 @@ rozmowa.pack(
 )
 
 
-# ==== DOLNY PANEL ==== 
+# ==== DOLNY PANEL ====
 
 dolny_panel = tk.Frame(
     okno,
-    bg="black"
+    bg=konfiguracje.kolor_tla
 )
 
 dolny_panel.pack(
@@ -346,12 +572,12 @@ dolny_panel.pack(
 )
 
 
-# ==== POLE WIADOMOŚCI ==== 
+# ==== POLE WIADOMOŚCI ====
 
 pole_wiadomosci = tk.Entry(
     dolny_panel,
-    bg="black",
-    fg="white",
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
     insertbackground="white"
 )
 
@@ -362,7 +588,7 @@ pole_wiadomosci.pack(
 )
 
 
-# ==== PRZYCISK WYŚLIJ ==== 
+# ==== PRZYCISK WYŚLIJ ====
 
 przycisk = tk.Button(
     dolny_panel,
@@ -376,5 +602,6 @@ przycisk.pack(
 
 
 # ==== START PROGRAMU ====
+
 okno.minsize(600, 400)
 okno.mainloop()

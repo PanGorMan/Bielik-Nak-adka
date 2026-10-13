@@ -1,0 +1,5 @@
+kolor_liter_zwykle
+kolor-liter_wazne
+kolor_tla
+wielkosc_liter
+czcionka
