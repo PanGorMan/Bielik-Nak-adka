@@ -8,7 +8,18 @@ import time
 import konfiguracje
 
 
+
+aktualna_rozmowa = None
+
 def wyslij():
+
+    def wyslij():
+        global aktualna_rozmowa
+
+        if aktualna_rozmowa is None:
+            print("Nie wybrano rozmowy")
+            return
+
     tekst = pole_wiadomosci.get()
 
     if not tekst:
@@ -20,6 +31,9 @@ def wyslij():
         tk.END,
         "\nTy: " + tekst + "\n\n"
     )
+
+    with open(aktualna_rozmowa, "a", encoding="utf-8") as plik:
+        plik.write("\nTy: " + tekst + "\n\n")
 
     rozmowa.config(state="disabled")
 
@@ -89,6 +103,36 @@ def zapytaj_bielika(tekst):
     )
 
 
+def wczytaj_rozmowe(nazwa):
+
+    plik = folder / f"{nazwa}.txt"
+
+    with open(plik, "r", encoding="utf-8") as f:
+        zawartosc = f.read()
+
+    rozmowa.config(state="normal")
+
+    rozmowa.delete("1.0", tk.END)
+    rozmowa.insert(tk.END, zawartosc)
+
+    rozmowa.config(state="disabled")
+
+    print(zawartosc)
+
+
+
+def pokaz_rozmowy():
+    for plik in folder.iterdir():
+        if plik.suffix == ".txt":
+
+            przycisk = tk.Button(
+                lewe_menu,
+                text=plik.stem,
+                command=lambda nazwa=plik.stem: wczytaj_rozmowe(nazwa)
+            )
+
+            przycisk.pack(fill="x")
+
 def pokaz_odpowiedz(
     tekst,
     godzina,
@@ -114,14 +158,19 @@ def pokaz_odpowiedz(
 
     rozmowa.insert(
         tk.END,
-        "Bielik: " + tekst + "\n"
+        "\nBielik: " + tekst + "\n"
     )
+
+    with open(aktualna_rozmowa, "a", encoding="utf-8") as plik:
+        plik.write("\nBielik: " + tekst + "\n")
 
     rozmowa.config(state="disabled")
 
     Godzina.config(text="Godzina: " + godzina)
     Czas.config(text=f"Czas: {czas:.2f} s")
     Model.config(text="Model: " + model)
+
+
 
     if czy_szuka_online.get():
         try:
@@ -260,10 +309,11 @@ menu = tk.Menu(
 
 # ===== KONFIGURACJE KONWERSACJI =====
 
+# --- operowanie na nowym txt
 def nowa_rozmowa():
 
     okno_opcji = tk.Toplevel(okno)
-    okno_opcji.title("Opcje programu")
+    okno_opcji.title("Nowa konwersacja")
     okno_opcji.geometry("200x150")
     okno_opcji.configure(bg=konfiguracje.kolor_tla)
 
@@ -279,17 +329,23 @@ def nowa_rozmowa():
     pole = tk.Entry(okno_opcji)
     pole.pack()
 
+    folder = Path(__file__).parent / "Zapis_konwersacji"
+
     def zapisz_nowy_plik():
+
+        global aktualna_rozmowa
 
         wartosc = pole.get()
 
-        sciezka = (
-            Path(__file__).parent
-            / "Zapis_konwersacji"
-            / f"{wartosc}.txt"
-        )
+        for plik in folder.iterdir():
+            if plik.stem == wartosc:
+                print("taki plik już istnieje:", plik)
+                return
 
+        sciezka = folder / f"{wartosc}.txt"
         sciezka.touch()
+
+        aktualna_rozmowa = sciezka
 
         okno_opcji.destroy()
 
@@ -299,6 +355,7 @@ def nowa_rozmowa():
         command=zapisz_nowy_plik
     ).pack()
 
+# --- 
 
 game_menu = tk.Menu(
     menu,
@@ -422,10 +479,36 @@ lista = tk.Listbox(
     selectforeground="white"
 )
 
-lista.pack(
-    fill="both",
-    expand=True
-)
+
+
+folder = Path(__file__).parent / "Zapis_konwersacji"
+
+
+def kliknieta_rozmowa(nazwa):
+    global aktualna_rozmowa
+
+    aktualna_rozmowa = folder / f"{nazwa}.txt"
+
+    wczytaj_rozmowe(nazwa)
+
+
+    print("Aktualna rozmowa:", aktualna_rozmowa)
+
+
+for plik in folder.iterdir():
+
+    if plik.suffix == ".txt":
+
+        przycisk = tk.Button(
+            lewe_menu,
+            text=plik.stem,
+            command=lambda nazwa=plik.stem: kliknieta_rozmowa(nazwa)
+        )
+
+        przycisk.pack(fill="x")
+
+
+
 
 folder = Path(__file__).parent / "Zapis_konwersacji"
 
@@ -506,6 +589,7 @@ status_online.pack()
 czy_z_pamięci_checkbox = tk.BooleanVar(value=True)
 czy_szuka_online = tk.BooleanVar(value=True)
 czy_szuka_z_bazy = tk.BooleanVar(value=True)
+czy_podaje_szybkie_odpowiedzi = tk.BooleanVar(value=False)
 
 
 czy_z_pamięci = tk.Checkbutton(
@@ -542,6 +626,17 @@ z_bazy = tk.Checkbutton(
 )
 
 z_bazy.pack(side="bottom")
+
+Szybkie_odpowiedzi = tk.Checkbutton(
+    prawe_menu,
+    text="Szybkie_odpowiedzi",
+    variable=czy_podaje_szybkie_odpowiedzi,
+    bg=konfiguracje.kolor_tla,
+    fg=konfiguracje.kolor_liter_zwykle,
+    selectcolor="black"
+)
+
+Szybkie_odpowiedzi.pack(side="bottom")
 
 
 # ==== POLE ROZMOWY ====

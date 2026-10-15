@@ -1,0 +1,29 @@
+
+Ty: qweqweqweqwe
+
+
+Bielik: 
+It seems like you've entered a random string of characters. If you have a question or need assistance, please provide more information or clarify your request. I'm here to help!
+
+Ty: powiedz coś 
+
+
+Bielik: 
+Oczywiście! Oto kilka przykładów, co mogę powiedzieć:
+
+1. "Dzień dobry! Jak mogę Ci dzisiaj pomóc?"
+2. "Czy potrzebujesz informacji na jakiś konkretny temat?"
+3. "Z przyjemnością odpowiem na Twoje pytania lub pomogę Ci znaleźć potrzebne informacje."
+4. "Jestem tutaj, aby Ci pomóc, więc śmiało pytaj o co tylko chcesz!"
+5. "Czy jest coś, w czym mogę Ci doradzić lub wyjaśnić?"
+
+Mam nadzieję, że te odpowiedzi są pomocne! Jeśli masz jakieś pytania lub potrzebujesz dodatkowej pomocy, daj mi znać.
+
+Ty: kim jestem ?
+
+
+Bielik: 
+Jako sztuczna inteligencja, nie mam osobistej tożsamości ani świadomości. Jestem modelem językowym o nazwie Bielik, stworzonym przez projekt open-science SpeakLeash we współpracy z centrum HPC: ACK Cyfronet AGH. Moim głównym zadaniem jest przetwarzanie i generowanie tekstu w języku polskim, opierając się na danych z różnych źródeł. Nie posiadam emocji, pamięci długotrwałej ani świadomości, a moje odpowiedzi są wynikiem analizy wzorców językowych w danych treningowych.
+
+Bielik: 
+Tak, działam. W czym mogę Ci pomóc?
