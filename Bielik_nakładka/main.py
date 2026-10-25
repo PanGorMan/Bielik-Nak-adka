@@ -3,22 +3,24 @@ import requests
 import threading
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import konfiguracje
+import csv
+import json
 
-
-
+# ==== wartości ogólne
 aktualna_rozmowa = None
+
+# ==== definicje
 
 def wyslij():
 
-    def wyslij():
-        global aktualna_rozmowa
+    global aktualna_rozmowa
 
-        if aktualna_rozmowa is None:
-            print("Nie wybrano rozmowy")
-            return
+    if aktualna_rozmowa is None:
+        print("Nie wybrano rozmowy")
+        return
 
     tekst = pole_wiadomosci.get()
 
@@ -45,49 +47,65 @@ def wyslij():
         daemon=True
     ).start()
 
-
 def zapytaj_bielika(tekst):
 
+    def rozpocznij_odpowiedz():
+        rozmowa.config(state="normal")
+        rozmowa.insert(tk.END, "\nBielik: ")
+        rozmowa.config(state="disabled")
+
+    def pokaz_fragment(fragment):
+        rozmowa.config(state="normal")
+        rozmowa.insert(tk.END, fragment)
+        rozmowa.config(state="disabled")
+    
     model = "bielik-michal"
 
     godzina = datetime.now().strftime("%H:%M:%S")
 
     start = time.perf_counter()
 
-    odpowiedz = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": model,
-            "prompt": tekst,
-            "stream": False
-        }
-    )
+    fragmenty = []
 
-    koniec = time.perf_counter()
-
-    czas = koniec - start
-
-    print("STATUS:", odpowiedz.status_code)
-    print("ODPOWIEDŹ:", odpowiedz.text)
-
-    dane = odpowiedz.json()
-
-    if "error" in dane:
-        okno.after(
-            0,
-            lambda: pokaz_odpowiedz(
-                "BŁĄD: " + dane["error"],
-                godzina,
-                czas,
-                model,
-                czy_z_pamięci_checkbox,
-                czy_szuka_z_bazy,
-                czy_szuka_online
-            )
+    try:
+        odpowiedz = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": model,
+                "prompt": tekst,
+                "stream": True
+            },
+            stream=True
         )
-        return
 
-    tekst_bielika = dane.get("response", "")
+        odpowiedz.raise_for_status()
+
+        okno.after(0, rozpocznij_odpowiedz)
+
+        for linia in odpowiedz.iter_lines():
+            if not linia:
+                continue
+
+            dane = json.loads(linia)
+
+            if "error" in dane:
+                raise RuntimeError(dane["error"])
+
+            fragment = dane.get("response", "")
+
+            fragmenty.append(fragment)
+
+            okno.after(
+                0,
+                lambda fragment=fragment: pokaz_fragment(fragment)
+            )
+
+        tekst_bielika = "".join(fragmenty)
+
+    except Exception as e:
+        tekst_bielika = f"BŁĄD: {e}"
+
+    czas = time.perf_counter() - start
 
     okno.after(
         0,
@@ -101,7 +119,6 @@ def zapytaj_bielika(tekst):
             czy_szuka_online
         )
     )
-
 
 def wczytaj_rozmowe(nazwa):
 
@@ -118,8 +135,6 @@ def wczytaj_rozmowe(nazwa):
     rozmowa.config(state="disabled")
 
     print(zawartosc)
-
-
 
 def pokaz_rozmowy():
     for plik in folder.iterdir():
@@ -148,6 +163,7 @@ def pokaz_odpowiedz(
     if dodatkowe_info_w_konwersacji.get():
         rozmowa.insert(
             tk.END,
+            "\n" +
             f"godzina: {godzina} | "
             f"czas: {czas:.2f} | "
             f"model: {model} | "
@@ -156,13 +172,10 @@ def pokaz_odpowiedz(
             f"online: {czy_online.get()}\n"
         )
 
-    rozmowa.insert(
-        tk.END,
-        "\nBielik: " + tekst + "\n"
-    )
+    #rozmowa.insert(tk.END,"\nBielik: " + tekst + "\n\n")
 
     with open(aktualna_rozmowa, "a", encoding="utf-8") as plik:
-        plik.write("\nBielik: " + tekst + "\n")
+         plik.write("\nBielik: " + tekst + "\n")
 
     rozmowa.config(state="disabled")
 
@@ -409,9 +422,28 @@ okno.config(menu=menu)
 
 # ----------
 
+def okno_pomocy ():
+    
+    okno_pomocy = tk.Toplevel(okno)
+    okno_pomocy.title("Opcje programu")
+    okno_pomocy.geometry("400x300")
+    okno_pomocy.configure(bg=konfiguracje.kolor_tla)
+
+    napis = tk.Label(
+        okno_pomocy,
+        text="Tu się potem walnie instrukcję",
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle
+    )
+
+    napis.pack(anchor="nw")
+
 menu.add_command(
-    label="Pomoc"
+    label="Pomoc",
+    command=okno_pomocy
+
 )
+
 
 
 # ==== GŁÓWNY PANEL ====
@@ -697,6 +729,33 @@ przycisk.pack(
 
 
 # ==== START PROGRAMU ====
+
+ile_dni_wyświetlić_w_koaendarzu = range(5)
+if konfiguracje.Ekran_powitalny == True:
+
+    data = datetime.now()
+
+    rozmowa.config(state="normal")
+    rozmowa.insert(tk.END, "Witaj użytkowniku!\nKalendarz:\n")
+
+    for n in ile_dni_wyświetlić_w_koaendarzu :
+        rozmowa.insert(tk.END, "\n" + data.strftime("%d:%m:%Y"))
+
+        with open("kalendarz.csv" , "r" , encoding="utf-8-sig") as kalendarz:
+            dane = csv.DictReader(kalendarz)
+
+            for wiersz in dane:
+                if wiersz["month"] ==  data.strftime("%m") and wiersz["day"] == data.strftime("%d"):
+                    rozmowa.insert(tk.END,"\n" +(wiersz["Nazwa okazji / Święto"]))
+                    rozmowa.insert(tk.END,"\n" +(wiersz["Imieniny"]) + "\n")
+
+
+        data = data + timedelta(days=1)
+
+    rozmowa.insert(tk.END, "\nwybierz konwersacje i możemy zaczynać : )\n")
+
+    rozmowa.config(state="disabled")
+
 
 okno.minsize(600, 400)
 okno.mainloop()

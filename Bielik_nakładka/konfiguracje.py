@@ -10,5 +10,5 @@ korzystanie_z_bazy = True
 korzystanie_z_pamieci = True
 wyszukiwarka = "DuckDuckGo"
 #opcje programu
-wypisywanie_dodatkowych_informacji = False
+wypisywanie_dodatkowych_informacji = True
 Ekran_powitalny = True
