@@ -1,7 +1,6 @@
 import tkinter as tk
 import requests
 import threading
-import os
 from pathlib import Path
 from datetime import datetime, timedelta
 import time
@@ -11,12 +10,49 @@ import json
 
 # ==== wartości ogólne
 aktualna_rozmowa = None
-
+ladowanie = False
+animacja_index = 0
+animacje = {
+    "animacja_1": ["|", "/", "-", "\\", "|", "/", "-", "\\"],
+    "animacja_2": ["˂", "˄", "˃", "˅"],
+    "animacja_3": ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+    "animacja_4": ["⠁", "⠂", "⠄", "⠂"],
+    "animacja_5": ["⠈", "⠐", "⠠", "⢀", "⠄", "⠂"],
+    "animacja_6": [". ", ".. ", "..."],
+    "animacja_7": ["●○○", "○●○", "○○●"],
+    "animacja_8": ["◢", "◣", "◤", "◥"]
+}
 # ==== definicje
+
+def uruchom_animacje():
+    if ladowanie == True :
+        global animacja_index
+
+        if not ladowanie:
+            return
+
+        rozmowa.config(state="normal")
+        rozmowa.delete("end-2c", "end-1c")
+
+        rozmowa.insert(
+            tk.END,
+            animacje[konfiguracje.wybor_animacji][animacja_index]
+        )
+
+        rozmowa.see(tk.END)
+        rozmowa.config(state="disabled")
+
+        animacja_index += 1
+
+        if animacja_index >= len(animacje[konfiguracje.wybor_animacji]):
+            animacja_index = 0
+
+        okno.after(100, uruchom_animacje)
+
 
 def wyslij():
 
-    global aktualna_rozmowa
+    global aktualna_rozmowa, ladowanie
 
     if aktualna_rozmowa is None:
         print("Nie wybrano rozmowy")
@@ -34,8 +70,13 @@ def wyslij():
         "\nTy: " + tekst + "\n\n"
     )
 
+    ladowanie = True
+
+    uruchom_animacje()
+
     with open(aktualna_rozmowa, "a", encoding="utf-8") as plik:
         plik.write("\nTy: " + tekst + "\n\n")
+        rozmowa.see(tk.END)
 
     rozmowa.config(state="disabled")
 
@@ -49,14 +90,22 @@ def wyslij():
 
 def zapytaj_bielika(tekst):
 
+
     def rozpocznij_odpowiedz():
+        
+        global ladowanie
+
+        ladowanie = False
+
         rozmowa.config(state="normal")
+        rozmowa.delete("end-2c", "end-1c")
         rozmowa.insert(tk.END, "\nBielik: ")
         rozmowa.config(state="disabled")
 
     def pokaz_fragment(fragment):
         rozmowa.config(state="normal")
         rozmowa.insert(tk.END, fragment)
+        rozmowa.see(tk.END)
         rozmowa.config(state="disabled")
     
     model = "bielik-michal"
@@ -67,13 +116,24 @@ def zapytaj_bielika(tekst):
 
     fragmenty = []
 
+    if czy_podaje_szybkie_odpowiedzi.get():
+        limit_tokenow = 150
+        temperatura = 0.5
+    else:
+        limit_tokenow = 2048
+        temperatura = 0.7
+    
     try:
         odpowiedz = requests.post(
             "http://localhost:11434/api/generate",
             json={
                 "model": model,
                 "prompt": tekst,
-                "stream": True
+                "stream": True,
+                "options": {
+                    "num_predict": limit_tokenow,
+                    "temperature": temperatura
+                }
             },
             stream=True
         )
@@ -107,6 +167,11 @@ def zapytaj_bielika(tekst):
 
     czas = time.perf_counter() - start
 
+
+
+
+
+    
     okno.after(
         0,
         lambda: pokaz_odpowiedz(
@@ -156,8 +221,8 @@ def pokaz_odpowiedz(
     czy_z_pamięci,
     z_bazy,
     czy_online
-):
-
+):  
+    
     rozmowa.config(state="normal")
 
     if dodatkowe_info_w_konwersacji.get():
@@ -171,8 +236,11 @@ def pokaz_odpowiedz(
             f"baza: {z_bazy.get()} | "
             f"online: {czy_online.get()}\n"
         )
+        rozmowa.see(tk.END)
+
 
     #rozmowa.insert(tk.END,"\nBielik: " + tekst + "\n\n")
+    rozmowa.delete("end-2c", "end-1c")
 
     with open(aktualna_rozmowa, "a", encoding="utf-8") as plik:
          plik.write("\nBielik: " + tekst + "\n")
@@ -183,6 +251,9 @@ def pokaz_odpowiedz(
     Czas.config(text=f"Czas: {czas:.2f} s")
     Model.config(text="Model: " + model)
 
+
+
+    czy_online.config (text= "")
 
 
     if czy_szuka_online.get():
@@ -223,12 +294,13 @@ def opcje_programu():
 
     napis.pack()
 
-    wybor = tk.StringVar(value=konfiguracje.wyszukiwarka)
+    wybor_animacji = tk.StringVar(value=konfiguracje.wybor_animacji)
+    wybor_przeglądarki = tk.StringVar(value=konfiguracje.wyszukiwarka)
     ekran_powitalny = tk.BooleanVar(value=True)
 
     wybor_wyszukiwarki = tk.OptionMenu(
         okno_opcji,
-        wybor,
+        wybor_przeglądarki,
         "google",
         "Bing",
         "Brave",
@@ -247,6 +319,35 @@ def opcje_programu():
         selectcolor="black"
     )
 
+    wybor_animacji_ladowania_napis = tk.Label(
+        okno_opcji,
+        text="wybor animacji dla ladowania",
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle
+    )
+
+    wybor_animacji_ladowania_napis.pack()
+
+
+    animacje = {
+        "animacja_1": ["|", "/", "-", "\\", "|", "/", "-", "\\"],
+        "animacja_2": ["˂", "˄", "˃", "˅"],
+        "animacja_3": ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+        "animacja_4": ["⠁", "⠂", "⠄", "⠂"],
+        "animacja_5": ["⠈", "⠐", "⠠", "⢀", "⠄", "⠂"],
+        "animacja_6": [". ", ".. ", "..."],
+        "animacja_7": ["●○○", "○●○", "○○●"],
+        "animacja_8": ["◢", "◣", "◤", "◥"]
+    }
+
+    wybor_animacji_ladowania = tk.OptionMenu(
+        okno_opcji,
+        wybor_animacji,
+        *animacje.keys()
+    )
+
+    wybor_animacji_ladowania.pack()
+
     dodatkowe_info_pytanie.pack()
 
     ekran_powitalny_pytanie = tk.Checkbutton(
@@ -262,11 +363,14 @@ def opcje_programu():
 
     def zapisz_ustawienia_programu():
 
-        nowa_wyszukiwarka = wybor.get()
+        nowa_wyszukiwarka = wybor_przeglądarki.get()
+        nowa_animacja = wybor_animacji.get()
+
         nowa_dodatkowe_info_w_konwersacji = dodatkowe_info_w_konwersacji.get()
         nowy_ekran_powitalny = ekran_powitalny.get()
 
-        konfiguracje.wyszukiwarka = wybor.get()
+        konfiguracje.wyszukiwarka = nowa_wyszukiwarka
+        konfiguracje.wybor_animacji = nowa_animacja
 
         sciezka = Path(__file__).parent / "konfiguracje.py"
 
@@ -288,6 +392,11 @@ def opcje_programu():
                 linie[i] = f'Ekran_powitalny = {nowy_ekran_powitalny}\n'
                 break
 
+        for i, linia in enumerate(linie):
+            if linia.startswith("wybor_animacji ="):
+                linie[i] = f'wybor_animacji = "{nowa_animacja}"\n'
+                break
+                
         with open(sciezka, "w", encoding="utf-8") as plik:
             plik.writelines(linie)
 
@@ -299,6 +408,28 @@ def opcje_programu():
         command=zapisz_ustawienia_programu
     ).pack()
 
+def baza_danych():
+    
+    global dodatkowe_info_w_konwersacji
+
+    okno_opcji = tk.Toplevel(okno)
+    okno_opcji.title("Opcje programu")
+    okno_opcji.geometry("400x300")
+    okno_opcji.configure(bg=konfiguracje.kolor_tla)
+
+
+# ==== wracaj do roboty !!!!
+
+
+
+    napis = tk.Label(
+        okno_opcji,
+        text="wybor preferowanej przeglądarki",
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle
+    )
+
+    napis.pack()
 
 # ===== GŁÓWNY EKRAN =====
 
@@ -414,7 +545,7 @@ opcje_menu.add_command(
 )
 
 opcje_menu.add_command(
-    label="Opcje wyglądu"
+    label="Baza danych"
 )
 
 okno.config(menu=menu)
@@ -540,8 +671,6 @@ for plik in folder.iterdir():
         przycisk.pack(fill="x")
 
 
-
-
 folder = Path(__file__).parent / "Zapis_konwersacji"
 
 for plik in folder.iterdir():
@@ -611,7 +740,7 @@ status_baza.pack()
 
 status_online = tk.Label(
     prawe_menu,
-    text="wyszukiwanie: offline",
+    text="wyszukiwanie:",
     bg=konfiguracje.kolor_tla,
     fg=konfiguracje.kolor_liter_zwykle
 )
@@ -681,11 +810,34 @@ rozmowa = tk.Text(
     insertbackground="white"
 )
 
+menu_rozmowy = tk.Menu(rozmowa, tearoff=0)
+
+menu_rozmowy.add_command(
+    label="Kopiuj",
+    command=lambda: rozmowa.event_generate("<<Copy>>")
+)
+
+menu_rozmowy.add_command(
+    label="Zaznacz wszystko",
+    command=lambda: rozmowa.tag_add("sel", "1.0", "end-1c")
+)
+
+menu_rozmowy.add_command(
+    label="Wyjaśnij dokładniej",
+)
+
 rozmowa.pack(
     fill="both",
     expand=True
 )
 
+def wyjasnij_dokladniej():
+    print("Wybrano: Wyjaśnij dokładniej")
+
+def pokaz_menu_rozmowy(event):
+    menu_rozmowy.tk_popup(event.x_root, event.y_root)
+
+rozmowa.bind("<Button-3>", pokaz_menu_rozmowy)
 
 # ==== DOLNY PANEL ====
 
@@ -708,12 +860,40 @@ pole_wiadomosci = tk.Entry(
     insertbackground="white"
 )
 
+
+menu_wiadomości = tk.Menu(rozmowa, tearoff=0)
+
+menu_wiadomości.add_command(
+    label="Kopiuj",
+    command=lambda: pole_wiadomosci.event_generate("<<Copy>>")
+)
+
+menu_wiadomości.add_command(
+    label="Wytnij",
+    command=lambda: pole_wiadomosci.event_generate("<<Cut>>")
+)
+
+menu_wiadomości.add_command(
+    label="Wklej",
+    command=lambda: pole_wiadomosci.event_generate("<<Paste>>")
+)
+
+menu_wiadomości.add_command(
+    label="Zaznacz wszystko",
+    command=lambda: pole_wiadomosci.select_range(0, tk.END)
+)
+
 pole_wiadomosci.pack(
     side="left",
     fill="x",
     expand=True
 )
 
+def pokaz_menu_wiadomosci(event):
+    menu_wiadomości.tk_popup(event.x_root, event.y_root)
+    menu_wiadomości.grab_release()
+
+pole_wiadomosci.bind("<Button-3>", pokaz_menu_wiadomosci)
 
 # ==== PRZYCISK WYŚLIJ ====
 
@@ -721,7 +901,12 @@ przycisk = tk.Button(
     dolny_panel,
     text="Wyślij",
     command=wyslij
+
 )
+
+okno.bind("<Return>", lambda event: wyslij())
+
+pole_wiadomosci.bind("<Return>", lambda event: wyslij())
 
 przycisk.pack(
     side="right"
