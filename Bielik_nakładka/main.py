@@ -7,6 +7,8 @@ import time
 import konfiguracje
 import csv
 import json
+import os
+
 
 # ==== wartości ogólne
 aktualna_rozmowa = None
@@ -166,11 +168,6 @@ def zapytaj_bielika(tekst):
         tekst_bielika = f"BŁĄD: {e}"
 
     czas = time.perf_counter() - start
-
-
-
-
-
     
     okno.after(
         0,
@@ -408,28 +405,181 @@ def opcje_programu():
         command=zapisz_ustawienia_programu
     ).pack()
 
+
+
 def baza_danych():
-    
-    global dodatkowe_info_w_konwersacji
 
     okno_opcji = tk.Toplevel(okno)
-    okno_opcji.title("Opcje programu")
-    okno_opcji.geometry("400x300")
+    okno_opcji.title("Baza Danych")
+    okno_opcji.geometry("800x600")
     okno_opcji.configure(bg=konfiguracje.kolor_tla)
 
+    def baza_danych_przycisk_zapis():
+        print("Zapisano!")
 
-# ==== wracaj do roboty !!!!
+    def baza_danych_przycisk_anuluj():
+        okno_opcji.destroy()
+
+    # Górny pasek
+    pasek = tk.Frame(okno_opcji)
+    pasek.pack(fill="x")
+
+    # Główna zawartość
+    ekran = tk.Frame(okno_opcji)
+    ekran.pack(fill="both", expand=True)
+
+    # Dolny pasek
+    pasek_dolny = tk.Frame(okno_opcji)
+    pasek_dolny.pack(fill="x", side="bottom")
+
+    # Wyświetlanie modeli
+    def pokaz_modele():
+        for widget in ekran.winfo_children():
+            widget.destroy()
+
+
+    # Wyświetlanie datasetów
+
+    def pokaz_baza_danych():
+        for widget in ekran.winfo_children():
+            widget.destroy()
+
+        sciezka = "BazaDanych"
+
+        lista_baz_danych = tk.Listbox(ekran)
+        lista_baz_danych.pack(fill="both", expand=True)
+
+        for plik in os.listdir(sciezka):
+            if plik.endswith(".db"):
+                lista_baz_danych.insert(tk.END, plik)
+
+    def pokaz_logi_systemowe():
+        for widget in ekran.winfo_children():
+            widget.destroy()
+
+        sciezka = "logi"
+
+        lista_logow = tk.Listbox(ekran)
+        lista_logow.pack(fill="both", expand=True)
+
+        for plik in os.listdir(sciezka):
+            if plik.endswith(".txt"):
+                lista_logow.insert(tk.END, plik)
+
+    def pokaz_zapis_rozmowy():
+
+        sciezka = "Zapis_konwersacji"
+
+        for widget in ekran.winfo_children():
+            widget.destroy()
+
+        lewy_panel = tk.Frame(ekran)
+        lewy_panel.pack(side="left", fill="y")
+
+        prawy_panel = tk.Frame(ekran)
+        prawy_panel.pack(side="left", fill="both", expand=True)
+
+        podglad = tk.Text(prawy_panel)
+        podglad.pack(fill="both", expand=True)
+
+        lista_rozmow = tk.Listbox(lewy_panel, width=30)
+        lista_rozmow.pack(fill="both", expand=True)
+
+        def pokaz_wiadomosc(event):
+
+            wybor = lista_rozmow.curselection()
+
+            if wybor:
+                nazwa_pliku = lista_rozmow.get(wybor[0])
+                sciezka_do_pliku = os.path.join(sciezka, nazwa_pliku)
+                informacje = os.stat(sciezka_do_pliku)
+                podglad.delete("1.0", tk.END)
+                podglad.insert(tk.END, nazwa_pliku + "\n" + sciezka_do_pliku)
+                podglad.insert(tk.END, f"Rozmiar: {informacje.st_size} bajtów\n")
+                # Konwersja znaczników czasu na czytelny format
+                podglad.insert(tk.END, f"Ostatnia modyfikacja: {datetime.fromtimestamp(informacje.st_mtime)}\n")
+                podglad.insert(tk.END, f"Ostatni dostęp: {datetime.fromtimestamp(informacje.st_atime)}\n")
+                podglad.insert(tk.END, f"Utworzono / zmiana metadanych: {datetime.fromtimestamp(informacje.st_ctime)}\n")
 
 
 
-    napis = tk.Label(
-        okno_opcji,
-        text="wybor preferowanej przeglądarki",
-        bg=konfiguracje.kolor_tla,
-        fg=konfiguracje.kolor_liter_zwykle
-    )
 
-    napis.pack()
+
+        lista_rozmow.bind("<<ListboxSelect>>", pokaz_wiadomosc)
+
+        for plik in os.listdir(sciezka):
+            if plik.endswith(".txt"):
+                lista_rozmow.insert(tk.END, plik)
+
+    def pokaz_datasety():
+
+        for widget in ekran.winfo_children():
+            widget.destroy()
+
+        sciezka = "dataset"
+
+        lista_datasetow = tk.Listbox(ekran)
+        lista_datasetow.pack(fill="both", expand=True)
+
+        for folder, podfoldery, pliki in os.walk(sciezka):
+
+            # Pomijamy folder główny
+            if folder == sciezka:
+                continue
+
+            nazwa_folderu = os.path.basename(folder)
+
+            lista_datasetow.insert(tk.END, nazwa_folderu + "")
+
+            for plik in pliki:
+                if plik != pliki[-1]:
+                    lista_datasetow.insert(tk.END, "├" + plik)
+                else:
+                    lista_datasetow.insert(tk.END, "└" + plik)
+
+    # Przyciski górne
+    tk.Button(
+        pasek,
+        text="Modele",
+        command=pokaz_modele
+    ).pack(side="left")
+
+    tk.Button(
+        pasek,
+        text="Datasety",
+        command=pokaz_datasety
+    ).pack(side="left")
+
+    tk.Button(
+        pasek,
+        text="Baza_danych",
+        command=pokaz_baza_danych
+    ).pack(side="left")
+
+    tk.Button(
+        pasek,
+        text="logi systemowe",
+        command=pokaz_logi_systemowe
+    ).pack(side="left")
+
+    tk.Button(
+        pasek,
+        text="zapis_rozmowy",
+        command=pokaz_zapis_rozmowy
+    ).pack(side="left")
+
+    # Przyciski dolne
+    tk.Button(
+        pasek_dolny,
+        text="Zapisz",
+        command=baza_danych_przycisk_zapis
+    ).pack(side="right", padx=5, pady=5)
+
+    tk.Button(
+        pasek_dolny,
+        text="Anuluj",
+        command=baza_danych_przycisk_anuluj
+    ).pack(side="right", padx=5, pady=5)
 
 # ===== GŁÓWNY EKRAN =====
 
@@ -545,7 +695,8 @@ opcje_menu.add_command(
 )
 
 opcje_menu.add_command(
-    label="Baza danych"
+    label="Baza danych",
+    command=baza_danych
 )
 
 okno.config(menu=menu)
@@ -556,13 +707,13 @@ okno.config(menu=menu)
 def okno_pomocy ():
     
     okno_pomocy = tk.Toplevel(okno)
-    okno_pomocy.title("Opcje programu")
+    okno_pomocy.title("Pomoc")
     okno_pomocy.geometry("400x300")
     okno_pomocy.configure(bg=konfiguracje.kolor_tla)
 
     napis = tk.Label(
         okno_pomocy,
-        text="Tu się potem walnie instrukcję",
+        text="Nawet ja nie wiem co tu się odwala - twórca progrmu :)",
         bg=konfiguracje.kolor_tla,
         fg=konfiguracje.kolor_liter_zwykle
     )

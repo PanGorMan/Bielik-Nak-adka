@@ -1,0 +1,5 @@
+{"prompt": "Do czego służy if w Pythonie?", "response": "Do warunkowego wykonywania kodu."}
+{"prompt": "Czym jest lista w Pythonie?", "response": "Uporządkowana, modyfikowalna kolekcja."}
+{"prompt": "Jak otworzyć plik do odczytu?", "response": "open('plik.txt', 'r', encoding='utf-8')"}
+{"prompt": "Co oznacza PRIMARY KEY?", "response": "Klucz główny jednoznacznie identyfikuje rekord."}
+{"prompt": "Do czego służy pętla for?", "response": "Do iterowania po elementach kolekcji lub zakresie."}

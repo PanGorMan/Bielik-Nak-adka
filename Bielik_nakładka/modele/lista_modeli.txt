@@ -1,0 +1,3 @@
+Przykładowy katalog modeli — bez plików wag.
+bielik-michal | 11.2B | Q4_K_M | Ollama
+llama3 | przykładowe | nieustalona | Ollama

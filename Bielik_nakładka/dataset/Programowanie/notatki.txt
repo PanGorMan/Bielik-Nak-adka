@@ -1,0 +1,4 @@
+Przykładowe notatki:
+Python - język programowania.
+SQLite - baza danych w pliku.
+Tkinter - biblioteka GUI.
