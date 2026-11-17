@@ -24,6 +24,7 @@ animacje = {
     "animacja_7": ["●○○", "○●○", "○○●"],
     "animacja_8": ["◢", "◣", "◤", "◥"]
 }
+
 # ==== definicje
 
 def uruchom_animacje():
@@ -182,9 +183,7 @@ def zapytaj_bielika(tekst):
         )
     )
 
-def wczytaj_rozmowe(nazwa):
-
-    plik = folder / f"{nazwa}.txt"
+def wczytaj_rozmowe(plik):
 
     with open(plik, "r", encoding="utf-8") as f:
         zawartosc = f.read()
@@ -221,18 +220,18 @@ def pokaz_odpowiedz(
 ):  
     
     rozmowa.config(state="normal")
+    
+    dodatkowe_info = (
+    f"godzina: {godzina} | "
+    f"czas: {czas:.2f} | "
+    f"model: {model} | "
+    f"pamięć: {czy_z_pamięci.get()} | "
+    f"baza: {z_bazy.get()} | "
+    f"online: {czy_online.get()}\n"
+)
 
     if dodatkowe_info_w_konwersacji.get():
-        rozmowa.insert(
-            tk.END,
-            "\n" +
-            f"godzina: {godzina} | "
-            f"czas: {czas:.2f} | "
-            f"model: {model} | "
-            f"pamięć: {czy_z_pamięci.get()} | "
-            f"baza: {z_bazy.get()} | "
-            f"online: {czy_online.get()}\n"
-        )
+        rozmowa.insert(tk.END, "\n" + dodatkowe_info)
         rozmowa.see(tk.END)
 
 
@@ -240,7 +239,8 @@ def pokaz_odpowiedz(
     rozmowa.delete("end-2c", "end-1c")
 
     with open(aktualna_rozmowa, "a", encoding="utf-8") as plik:
-         plik.write("\nBielik: " + tekst + "\n")
+        plik.write("\nBielik: " + tekst + "\n")
+        plik.write(dodatkowe_info)
 
     rozmowa.config(state="disabled")
 
@@ -358,6 +358,17 @@ def opcje_programu():
 
     ekran_powitalny_pytanie.pack()
 
+    Podkreslanie_fragmentow = tk.Checkbutton(
+        okno_opcji,
+        text="Podkreslanie ważnych fragmentów",
+        variable=ekran_powitalny,
+        bg=konfiguracje.kolor_tla,
+        fg=konfiguracje.kolor_liter_zwykle,
+        selectcolor="black"
+    )
+
+    Podkreslanie_fragmentow.pack()
+
     def zapisz_ustawienia_programu():
 
         nowa_wyszukiwarka = wybor_przeglądarki.get()
@@ -407,7 +418,7 @@ def opcje_programu():
 
 
 
-def baza_danych():
+def baza_danych(nazwa_konwersacji=None):
 
     okno_opcji = tk.Toplevel(okno)
     okno_opcji.title("Baza Danych")
@@ -437,17 +448,49 @@ def baza_danych():
         for widget in ekran.winfo_children():
             widget.destroy()
 
-
     # Wyświetlanie datasetów
-
     def pokaz_baza_danych():
         for widget in ekran.winfo_children():
             widget.destroy()
 
         sciezka = "BazaDanych"
 
-        lista_baz_danych = tk.Listbox(ekran)
+        # Lewy panel
+        lewy_panel = tk.Frame(ekran)
+        lewy_panel.pack(side="left", fill="y")
+
+        # Prawy panel
+        prawy_panel = tk.Frame(ekran)
+        prawy_panel.pack(side="left", fill="both", expand=True)
+
+        # Lista baz danych
+        lista_baz_danych = tk.Listbox(lewy_panel, width=30)
         lista_baz_danych.pack(fill="both", expand=True)
+
+        # Miejsce na podgląd bazy
+        podglad_bazy = tk.Text(prawy_panel)
+        podglad_bazy.pack(fill="both", expand=True)
+
+
+        def pokaz_wiadomosc(event):
+
+            wybor = lista_baz_danych.curselection()
+
+            if wybor:
+                nazwa_pliku = lista_baz_danych.get(wybor[0])
+                sciezka_do_pliku = os.path.join(sciezka, nazwa_pliku)
+                informacje = os.stat(sciezka_do_pliku)
+                podglad_bazy.delete("1.0", tk.END)
+                podglad_bazy.insert(tk.END, "Nazwa pliku:" + nazwa_pliku + "\n" + sciezka_do_pliku + "\n")
+                podglad_bazy.insert(tk.END, f"Rozmiar: {informacje.st_size} bajtów\n")
+                # Konwersja znaczników czasu na czytelny format
+                podglad_bazy.insert(tk.END, f"Ostatnia modyfikacja: {datetime.fromtimestamp(informacje.st_mtime).strftime("%Y-%m-%d %H:%M:%S")}\n")
+                podglad_bazy.insert(tk.END, f"Ostatni dostęp: {datetime.fromtimestamp(informacje.st_atime)}\n")
+                podglad_bazy.insert(tk.END, f"Utworzono : {datetime.fromtimestamp(informacje.st_ctime)}\n")
+                podglad_bazy.insert(tk.END, "===================\nZawartość pliku:")
+
+
+        lista_baz_danych.bind("<<ListboxSelect>>", pokaz_wiadomosc)
 
         for plik in os.listdir(sciezka):
             if plik.endswith(".db"):
@@ -473,8 +516,8 @@ def baza_danych():
         for widget in ekran.winfo_children():
             widget.destroy()
 
-        lewy_panel = tk.Frame(ekran)
-        lewy_panel.pack(side="left", fill="y")
+        lewy_panel_pokaz_zapis_rozmowy = tk.Frame(ekran)
+        lewy_panel_pokaz_zapis_rozmowy.pack(side="left", fill="y")
 
         prawy_panel = tk.Frame(ekran)
         prawy_panel.pack(side="left", fill="both", expand=True)
@@ -482,7 +525,7 @@ def baza_danych():
         podglad = tk.Text(prawy_panel)
         podglad.pack(fill="both", expand=True)
 
-        lista_rozmow = tk.Listbox(lewy_panel, width=30)
+        lista_rozmow = tk.Listbox(lewy_panel_pokaz_zapis_rozmowy, width=30)
         lista_rozmow.pack(fill="both", expand=True)
 
         def pokaz_wiadomosc(event):
@@ -494,15 +537,16 @@ def baza_danych():
                 sciezka_do_pliku = os.path.join(sciezka, nazwa_pliku)
                 informacje = os.stat(sciezka_do_pliku)
                 podglad.delete("1.0", tk.END)
-                podglad.insert(tk.END, nazwa_pliku + "\n" + sciezka_do_pliku)
+                podglad.insert(tk.END, "Nazwa pliku:" + nazwa_pliku + "\n" + sciezka_do_pliku + "\n")
                 podglad.insert(tk.END, f"Rozmiar: {informacje.st_size} bajtów\n")
                 # Konwersja znaczników czasu na czytelny format
-                podglad.insert(tk.END, f"Ostatnia modyfikacja: {datetime.fromtimestamp(informacje.st_mtime)}\n")
+                podglad.insert(tk.END, f"Ostatnia modyfikacja: {datetime.fromtimestamp(informacje.st_mtime).strftime("%Y-%m-%d %H:%M:%S")}\n")
                 podglad.insert(tk.END, f"Ostatni dostęp: {datetime.fromtimestamp(informacje.st_atime)}\n")
-                podglad.insert(tk.END, f"Utworzono / zmiana metadanych: {datetime.fromtimestamp(informacje.st_ctime)}\n")
-
-
-
+                podglad.insert(tk.END, f"Utworzono : {datetime.fromtimestamp(informacje.st_ctime)}\n")
+                podglad.insert(tk.END, "===================\nZawartość pliku:")
+                with open(sciezka_do_pliku, "r", encoding="utf-8") as f:
+                    zawartosc = f.read()
+                podglad.insert(tk.END, zawartosc)
 
 
         lista_rozmow.bind("<<ListboxSelect>>", pokaz_wiadomosc)
@@ -510,6 +554,12 @@ def baza_danych():
         for plik in os.listdir(sciezka):
             if plik.endswith(".txt"):
                 lista_rozmow.insert(tk.END, plik)
+
+                if nazwa_konwersacji and plik == nazwa_konwersacji + ".txt":
+                    indeks = lista_rozmow.size() - 1
+                    lista_rozmow.selection_set(indeks)
+                    lista_rozmow.activate(indeks)
+                    lista_rozmow.event_generate("<<ListboxSelect>>")
 
     def pokaz_datasety():
 
@@ -580,6 +630,9 @@ def baza_danych():
         text="Anuluj",
         command=baza_danych_przycisk_anuluj
     ).pack(side="right", padx=5, pady=5)
+
+    if nazwa_konwersacji:
+        pokaz_zapis_rozmowy()
 
 # ===== GŁÓWNY EKRAN =====
 
@@ -695,7 +748,7 @@ opcje_menu.add_command(
 )
 
 opcje_menu.add_command(
-    label="Baza danych",
+    label="Baza Wiedzy",
     command=baza_danych
 )
 
@@ -774,6 +827,67 @@ glowny_panel.grid_rowconfigure(
 
 # ==== LEWE MENU - 20% ====
 
+wybrana_sciezka = None
+folder = Path(__file__).parent / "Zapis_konwersacji"
+
+
+def kliknieta_rozmowa(sciezka):
+    global aktualna_rozmowa
+
+    aktualna_rozmowa = sciezka
+
+    wczytaj_rozmowe(aktualna_rozmowa)
+
+    print("Aktualna rozmowa:", aktualna_rozmowa)
+
+def pokaz_menu_konwersacji(event):
+    global wybrana_sciezka , przycisk
+
+    przycisk = event.widget
+    nazwa = przycisk["text"]
+    wybrana_sciezka = folder / f"{nazwa}.txt"
+
+    menu_konwersacji.tk_popup(event.x_root, event.y_root)
+    menu_konwersacji.grab_release()
+
+
+def usun_konwersacje():
+    global aktualna_rozmowa
+
+    if wybrana_sciezka and wybrana_sciezka.exists():
+        os.remove(wybrana_sciezka)
+        przycisk.destroy()
+
+        if aktualna_rozmowa == wybrana_sciezka:
+            aktualna_rozmowa = None
+            rozmowa.config(state="normal")
+            rozmowa.delete("1.0", tk.END)
+            rozmowa.config(state="disabled")
+
+
+def Pokarz_konwersacie_w_bazie ():
+    baza_danych(wybrana_sciezka.stem)
+
+
+menu_konwersacji = tk.Menu(okno, tearoff=0)
+
+
+menu_konwersacji.add_command(
+    label="Zmień nazwę"
+)
+
+menu_konwersacji.add_command(
+    label="Usuń",
+    command=usun_konwersacje
+    
+)
+
+menu_konwersacji.add_command(
+    label="Pokarz w bazie",
+    command=Pokarz_konwersacie_w_bazie,
+)
+
+
 lewe_menu = tk.Frame(
     glowny_panel,
     bg=konfiguracje.kolor_tla
@@ -784,6 +898,8 @@ lewe_menu.grid(
     column=0,
     sticky="nsew"
 )
+
+
 
 lista = tk.Listbox(
     lewe_menu,
@@ -798,17 +914,6 @@ lista = tk.Listbox(
 folder = Path(__file__).parent / "Zapis_konwersacji"
 
 
-def kliknieta_rozmowa(nazwa):
-    global aktualna_rozmowa
-
-    aktualna_rozmowa = folder / f"{nazwa}.txt"
-
-    wczytaj_rozmowe(nazwa)
-
-
-    print("Aktualna rozmowa:", aktualna_rozmowa)
-
-
 for plik in folder.iterdir():
 
     if plik.suffix == ".txt":
@@ -816,10 +921,12 @@ for plik in folder.iterdir():
         przycisk = tk.Button(
             lewe_menu,
             text=plik.stem,
-            command=lambda nazwa=plik.stem: kliknieta_rozmowa(nazwa)
+            command=lambda sciezka=plik: kliknieta_rozmowa(sciezka)
         )
 
         przycisk.pack(fill="x")
+        przycisk.bind("<Button-3>",pokaz_menu_konwersacji)
+
 
 
 folder = Path(__file__).parent / "Zapis_konwersacji"

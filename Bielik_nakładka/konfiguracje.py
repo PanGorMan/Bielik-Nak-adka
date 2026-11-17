@@ -16,7 +16,7 @@ wyszukiwarka = "DuckDuckGo"
 
 #opcje programu
 
-wypisywanie_dodatkowych_informacji = True
+wypisywanie_dodatkowych_informacji = False
 Ekran_powitalny = True
 
 # animacja ładowania

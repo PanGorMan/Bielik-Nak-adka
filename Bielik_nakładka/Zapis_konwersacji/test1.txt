@@ -217,3 +217,24 @@ Ty: działasz ?
 
 Bielik: 
 Tak, działam. W czym mogę Ci pomóc?
+
+Ty: działasz ?
+
+
+Bielik: 
+Tak, działam jako sztuczna inteligencja stworzona przez projekt open-science SpeakLeash we współpracy z centrum HPC: ACK Cyfronet AGH. Zostałem wytrenowany na polskich tekstach przez polskich badaczy. Moim zadaniem jest pomagać Ci w różnych zadaniach i odpowiadać na pytania. Jak mogę Ci dzisiaj pomóc?
+godzina: 22:24:40 | czas: 80.22 | model: bielik-michal | pamięć: True | baza: True | online: True
+
+Ty: działasz ?
+
+
+Bielik: 
+Tak, jestem gotowy do działania. W czym mogę Ci pomóc?
+godzina: 22:26:22 | czas: 5.39 | model: bielik-michal | pamięć: True | baza: True | online: True
+
+Ty: działasz ?
+
+
+Bielik: 
+Tak, jestem dostępny i gotowy do pomocy. W czym mogę Ci pomóc?
+godzina: 14:00:37 | czas: 23.79 | model: bielik-michal | pamięć: True | baza: True | online: True
